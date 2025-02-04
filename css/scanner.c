@@ -28,9 +28,9 @@ bool tree_sitter_css_external_scanner_scan(void *payload, TSLexer *lexer, const 
     if (iswspace(lexer->lookahead) && valid_symbols[DESCENDANT_OP]) {
         lexer->result_symbol = DESCENDANT_OP;
 
-        lexer->advance(lexer, true);
+        skip(lexer);
         while (iswspace(lexer->lookahead)) {
-            lexer->advance(lexer, true);
+            skip(lexer);
         }
         lexer->mark_end(lexer);
 
@@ -40,7 +40,7 @@ bool tree_sitter_css_external_scanner_scan(void *payload, TSLexer *lexer, const 
         }
 
         if (lexer->lookahead == ':') {
-            lexer->advance(lexer, false);
+            advance(lexer);
             if (iswspace(lexer->lookahead)) {
                 return false;
             }
@@ -51,14 +51,14 @@ bool tree_sitter_css_external_scanner_scan(void *payload, TSLexer *lexer, const 
                 if (lexer->lookahead == '{') {
                     return true;
                 }
-                lexer->advance(lexer, false);
+                advance(lexer);
             }
         }
     }
 
     if (valid_symbols[PSEUDO_CLASS_SELECTOR_COLON]) {
         while (iswspace(lexer->lookahead)) {
-            lexer->advance(lexer, true);
+            skip(lexer);
         }
         if (lexer->lookahead == ':') {
             advance(lexer);
@@ -66,16 +66,19 @@ bool tree_sitter_css_external_scanner_scan(void *payload, TSLexer *lexer, const 
                 return false;
             }
             lexer->mark_end(lexer);
+            lexer->result_symbol = PSEUDO_CLASS_SELECTOR_COLON;
             // We need a { to be a pseudo class selector, a ; indicates a property
-            while (lexer->lookahead != ';' && lexer->lookahead != '\'' && lexer->lookahead != '}' &&
-                   !lexer->eof(lexer)) {
+            while (lexer->lookahead != ';' && lexer->lookahead != '}' && !lexer->eof(lexer)) {
                 advance(lexer);
                 if (lexer->lookahead == '{') {
-                    lexer->result_symbol = PSEUDO_CLASS_SELECTOR_COLON;
                     return true;
                 }
             }
-            return false;
+
+            // If we're at eof, and we happened to *not* find an opening brace to indicate we have a pseudo class
+            // selector, we should *still* return one at EOF. This will improve error recovery, and the malformed code
+            // can be parsed as an erroneous pseudo-class selector, rather than an erroneous property.
+            return lexer->eof(lexer);
         }
     }
 

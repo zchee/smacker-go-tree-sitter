@@ -1,7 +1,9 @@
 package python
 
-//#include "parser.h"
-//TSLanguage *tree_sitter_python();
+// #include "parser.h"
+// #cgo CFLAGS: -I../
+// #include "../alloc.h"
+// TSLanguage *tree_sitter_python();
 import "C"
 import (
 	"unsafe"
